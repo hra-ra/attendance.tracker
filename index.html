@@ -8,13 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
-<div id="dashboard" style="margin-bottom:40px;">
-  <div class="results-header">
-    <span class="results-label">Most Important Topics</span>
-    <div class="results-line"></div>
-  </div>
-  <div id="topicDashboard"></div>
-</div>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -342,10 +335,24 @@
     <div class="footer-brand">GUESS THE <span>?</span></div>
     <div class="footer-note">Pattern Analysis · Previous Year Papers</div>
   </div>
+  <div id="dashboard" style="margin-bottom:40px;">
+  <div class="results-header">
+    <span class="results-label">Most Important Topics</span>
+    <div class="results-line"></div>
+  </div>
+  <div id="topicDashboard"></div>
+</div>
 
 </div>
 
 <script>
+  function fillTopic(topic) {
+  const input = document.getElementById('topicInput');
+  if (!input) return;
+
+  input.value = topic;
+  input.focus();
+}
 
 // ─── DATA FIRST (IMPORTANT) ───────────────────────
 let questionBank = [
