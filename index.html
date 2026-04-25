@@ -346,128 +346,178 @@
 </div>
 
 <script>
-  
 
-// ─── BUILD TOPIC STATS ─────────────────────────────
-function computeTopicStats() {
-  let map = {};
-
-  questionBank.forEach(q => {
-    if (!map[q.topic]) {
-      map[q.topic] = { count: 0, score: 0 };
-    }
-
-    map[q.topic].count += 1;
-
-    let weight = 1;
-    if (q.marks === 10) weight = 3;
-    else if (q.marks === 5) weight = 2;
-
-    let recency = q.year >= 2022 ? 2 : 0;
-
-    map[q.topic].score += weight + recency;
-  });
-
-  return Object.entries(map)
-    .map(([topic, data]) => ({
-      topic,
-      score: data.score
-    }))
-    .sort((a, b) => b.score - a.score);
-}
-
-// ─── RENDER DASHBOARD ─────────────────────────────
-function renderDashboard() {
-  const stats = computeTopicStats();
-  const container = document.getElementById("topicDashboard");
-
-  container.innerHTML = "";
-
-  stats.forEach((t, i) => {
-    const el = document.createElement("div");
-    el.className = "topic-card";
-
-    el.innerHTML = `
-      <div class="topic-name">${t.topic.toUpperCase()}</div>
-      <div class="topic-score">${t.score}</div>
-      <div class="topic-bar" style="width:${Math.min(100, t.score * 5)}%"></div>
-    `;
-
-    container.appendChild(el);
-  });
-}
-
-// ─── RUN ON LOAD ─────────────────────────────
-renderDashboard();
-
+// ─── DATA FIRST (IMPORTANT) ───────────────────────
 let questionBank = [
-  // ─── UNIT 1: QUANTUM MECHANICS ─────────────────────
-  { topic:"quantum", question:"Explain Heisenberg Uncertainty Principle. Can big bodies be localized?", marks:2, year:2023 },
-  { topic:"quantum", question:"Explain normalization of wave function and acceptable conditions.", marks:2, year:2023 },
+  { topic:"quantum", question:"Explain Heisenberg Uncertainty Principle.", marks:2, year:2023 },
   { topic:"quantum", question:"Particle in a box: derive energy eigenvalues.", marks:10, year:2023 },
-  { topic:"quantum", question:"Differentiate ψ and |ψ|².", marks:2, year:2023 },
-  { topic:"quantum", question:"Phase velocity vs group velocity with proof.", marks:10, year:2023 },
-  { topic:"quantum", question:"Normalize a given wave function.", marks:5, year:2023 },
+  { topic:"quantum", question:"Normalize a wave function.", marks:5, year:2023 },
 
-  // ─── UNIT 2: STATISTICS + RADIATION ───────────────
-  { topic:"radiation", question:"Derive Planck’s radiation law using BE statistics.", marks:10, year:2023 },
-  { topic:"radiation", question:"Explain Wien’s law and its relation to Planck’s law.", marks:5, year:2023 },
-  { topic:"statistics", question:"Maxwell-Boltzmann distribution and average energy.", marks:5, year:2023 },
-  { topic:"statistics", question:"Fermi-Dirac distribution and Fermi level.", marks:5, year:2023 },
-  { topic:"statistics", question:"Distinguish Bosons and Fermions.", marks:3, year:2023 },
+  { topic:"crystal", question:"State Bragg’s law.", marks:5, year:2023 },
+  { topic:"crystal", question:"Find Miller indices.", marks:5, year:2023 },
 
-  // ─── UNIT 3: CRYSTAL STRUCTURE ───────────────────
-  { topic:"crystal", question:"State Bragg’s law and explain its application.", marks:5, year:2023 },
-  { topic:"crystal", question:"Define unit cell, space lattice and coordination number.", marks:5, year:2023 },
-  { topic:"crystal", question:"Find Miller indices for given intercepts.", marks:5, year:2023 },
-  { topic:"crystal", question:"Calculate interplanar spacing using Bragg’s law.", marks:5, year:2023 },
-  { topic:"crystal", question:"Explain point defects, Frenkel and Schottky defects.", marks:5, year:2023 },
+  { topic:"semiconductor", question:"Explain PN junction diode.", marks:5, year:2023 },
+  { topic:"semiconductor", question:"Explain Zener diode.", marks:5, year:2023 },
 
-  // ─── UNIT 4: SEMICONDUCTORS ──────────────────────
-  { topic:"semiconductor", question:"Intrinsic vs extrinsic semiconductors.", marks:5, year:2023 },
-  { topic:"semiconductor", question:"Explain Kronig-Penney model.", marks:10, year:2023 },
-  { topic:"semiconductor", question:"Energy band diagram of conductor, insulator and semiconductor.", marks:5, year:2023 },
-  { topic:"semiconductor", question:"Fermi level in intrinsic semiconductor.", marks:5, year:2023 },
-  { topic:"semiconductor", question:"Explain Zener diode and PN junction diode.", marks:5, year:2023 },
+  { topic:"statistics", question:"Maxwell-Boltzmann distribution.", marks:5, year:2023 }
 ];
 
-// ─── SCORING SYSTEM ───────────────────────────────
+// ─── FILTER STATE ────────────────────────────────
+const activeFilters = new Set(['2-mark','5-mark','10-mark']);
+
+function toggleChip(id, val) {
+  const el = document.getElementById(id);
+
+  if (activeFilters.has(val)) {
+    activeFilters.delete(val);
+    el.classList.remove('active');
+  } else {
+    activeFilters.add(val);
+    el.classList.add('active');
+  }
+}
+
+// ─── SCORE ───────────────────────────────────────
 function getScore(q) {
   let score = 0;
 
-  // marks weight
   if (q.marks === 10) score += 3;
   else if (q.marks === 5) score += 2;
   else score += 1;
 
-  // recency
   if (q.year >= 2022) score += 2;
 
   return score;
 }
 
-// ─── SEARCH FUNCTION ──────────────────────────────
+// ─── DASHBOARD ───────────────────────────────────
+function renderDashboard() {
+  let map = {};
+
+  questionBank.forEach(q => {
+    if (!map[q.topic]) map[q.topic] = 0;
+    map[q.topic] += getScore(q);
+  });
+
+  const container = document.getElementById("topicDashboard");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  Object.entries(map)
+    .sort((a,b) => b[1] - a[1])
+    .forEach(([topic,score]) => {
+      const el = document.createElement("div");
+      el.className = "topic-card";
+
+      el.innerHTML = `
+        <div class="topic-name">${topic.toUpperCase()}</div>
+        <div class="topic-score">${score}</div>
+        <div class="topic-bar" style="width:${Math.min(100, score*5)}%"></div>
+      `;
+
+      container.appendChild(el);
+    });
+}
+
+// ─── GET QUESTIONS ───────────────────────────────
 function getQuestions(topic) {
   topic = topic.toLowerCase();
 
-  let filtered = questionBank.filter(q =>
-    q.topic.includes(topic) || q.question.toLowerCase().includes(topic)
+  let results = questionBank.filter(q =>
+    q.topic.includes(topic) ||
+    q.question.toLowerCase().includes(topic)
   );
 
-  if (filtered.length === 0) {
-    filtered = questionBank;
+  if (results.length === 0) results = questionBank;
+
+  // APPLY FILTERS
+  results = results.filter(q =>
+    activeFilters.has(q.marks + "-mark")
+  );
+
+  // SORT
+  results.sort((a,b) => getScore(b) - getScore(a));
+
+  return results;
+}
+
+// ─── RENDER RESULTS ──────────────────────────────
+function renderResults(questions, topic) {
+  const zone = document.getElementById('resultsZone');
+
+  if (!zone) return;
+
+  if (questions.length === 0) {
+    zone.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">!</span>
+        <div class="empty-text">No questions match filters</div>
+      </div>`;
+    return;
   }
 
-  // sort by importance
-  filtered.sort((a, b) => getScore(b) - getScore(a));
+  zone.innerHTML = `
+    <div class="results-header">
+      <span class="results-label">Predicted Questions</span>
+      <div class="results-line"></div>
+      <span class="results-count">${questions.length} · ${topic.toUpperCase()}</span>
+    </div>`;
 
-  return filtered.map(q => ({
-    question: q.question,
-    type: q.marks + "-mark",
-    probability: Math.min(95, 60 + getScore(q) * 5),
-    years: q.year
-  }));
+  questions.forEach((q, i) => {
+    const probability = Math.min(95, 60 + getScore(q)*5);
+
+    const card = document.createElement('div');
+    card.className = 'question-card';
+
+    card.innerHTML = `
+      <div class="q-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="q-body">
+        <div class="q-text">${q.question}</div>
+        <div class="q-meta">
+          <span class="q-tag tag-type">${q.marks}-mark</span>
+          <span class="q-tag tag-prob">${probability}%</span>
+          <span class="q-tag tag-year">${q.year}</span>
+        </div>
+        <div class="prob-bar-wrap">
+          <div class="prob-bar" style="width:${probability}%"></div>
+        </div>
+      </div>
+    `;
+
+    zone.appendChild(card);
+  });
 }
+
+// ─── MAIN BUTTON ─────────────────────────────────
+function runScan() {
+  const input = document.getElementById('topicInput');
+  if (!input) return;
+
+  const topic = input.value.trim();
+  if (!topic) return;
+
+  const questions = getQuestions(topic);
+  renderResults(questions, topic);
+}
+
+// ─── EVENTS ──────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+
+  renderDashboard();
+
+  const input = document.getElementById('topicInput');
+  const btn = document.getElementById('scanBtn');
+
+  if (btn) btn.addEventListener("click", runScan);
+
+  if (input) {
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") runScan();
+    });
+  }
+
+});
 
 </script>
 
