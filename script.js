@@ -1,3 +1,4 @@
+let editIndex = null;
 let deleteIndex = null;
 let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
 const TARGET = 75;
@@ -8,12 +9,7 @@ let currentYear = new Date().getFullYear();
 const today = new Date();
 const todayString = formatDate(today);
 
-/* ---------- Date Utility ----------
-   IMPORTANT: we build date-key strings from LOCAL date parts, not
-   date.toISOString(). toISOString() converts to UTC first, and for
-   timezones ahead of UTC (like India, UTC+5:30) that silently shifts
-   the date back by one day - e.g. attendance marked on the 15th was
-   being saved under the 14th. formatDate() avoids that. */
+/* ---------- Date Utility ---------- */
 function formatDate(d) {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -28,8 +24,50 @@ if (localStorage.getItem("darkMode") === "true") {
 
 function toggleDark() {
   document.body.classList.toggle("dark");
-  localStorage.setItem("darkMode",
-    document.body.classList.contains("dark"));
+  localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+}
+
+/* ---------- Data Export/Import ---------- */
+function exportData() {
+  const exportPayload = {
+    subjects: subjects,
+    darkMode: document.body.classList.contains("dark")
+  };
+  const blob = new Blob([JSON.stringify(exportPayload)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `attendance_data_${formatDate(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported.subjects) {
+        subjects = imported.subjects;
+        save();
+        if (imported.darkMode) {
+          document.body.classList.add("dark");
+          localStorage.setItem("darkMode", "true");
+        } else {
+          document.body.classList.remove("dark");
+          localStorage.setItem("darkMode", "false");
+        }
+        render();
+      }
+    } catch (error) {
+      alert("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ""; // reset input
 }
 
 /* ---------- Utilities ---------- */
@@ -38,6 +76,25 @@ function save() {
 }
 
 function openModal() {
+  editIndex = null;
+  document.getElementById("subjectName").value = "";
+  document.querySelectorAll(".checkbox-group input").forEach(cb => cb.checked = false);
+  document.getElementById("addBtn").innerText = "Add";
+  validateForm();
+  document.getElementById("modal").classList.add("show");
+}
+
+function openEditModal(i) {
+  editIndex = i;
+  const sub = subjects[i];
+  document.getElementById("subjectName").value = sub.name;
+  
+  document.querySelectorAll(".checkbox-group input").forEach(cb => {
+    cb.checked = sub.days.includes(cb.value);
+  });
+  
+  document.getElementById("addBtn").innerText = "Save";
+  validateForm();
   document.getElementById("modal").classList.add("show");
 }
 
@@ -54,7 +111,7 @@ function validateForm() {
   document.getElementById("addBtn").disabled = !(name && checked.length > 0);
 }
 
-/* ---------- Add Subject ---------- */
+/* ---------- Add / Edit Subject ---------- */
 function addSubject() {
   const name = document.getElementById("subjectName").value.trim();
   const checked = document.querySelectorAll(".checkbox-group input:checked");
@@ -62,13 +119,21 @@ function addSubject() {
 
   if (!name || days.length === 0) return;
 
-  subjects.push({ name: name, days: days, attendance: {} });
+  if (editIndex !== null) {
+    subjects[editIndex].name = name;
+    subjects[editIndex].days = days;
+  } else {
+    subjects.push({ name: name, days: days, attendance: {} });
+  }
+  
   save();
   render();
 
   document.getElementById("subjectName").value = "";
   checked.forEach(cb => cb.checked = false);
   document.getElementById("addBtn").disabled = true;
+  document.getElementById("addBtn").innerText = "Add";
+  editIndex = null;
   document.getElementById("modal").classList.remove("show");
 }
 
@@ -106,6 +171,9 @@ function markDate(index, dateStr, status) {
 function stats(sub) {
   let present = 0, total = 0;
   for (let d in sub.attendance) {
+    // Cancelled classes do not count towards the total or present stats
+    if (sub.attendance[d] === "cancelled") continue; 
+    
     total++;
     if (sub.attendance[d] === "present") present++;
   }
@@ -125,12 +193,8 @@ function circularProgress(percent) {
   return `
   <div class="ring-container ${colorClass}">
     <svg width="100" height="100">
-      <circle class="ring-bg"
-        cx="50" cy="50" r="${radius}" />
-      <circle class="ring-progress"
-        cx="50" cy="50" r="${radius}"
-        stroke-dasharray="${circumference}"
-        stroke-dashoffset="${offset}" />
+      <circle class="ring-bg" cx="50" cy="50" r="${radius}" />
+      <circle class="ring-progress" cx="50" cy="50" r="${radius}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" />
     </svg>
     <div class="ring-text">${percent}%</div>
   </div>
@@ -158,17 +222,20 @@ function streakText(sub) {
   return streak + " Day Streak \uD83D\uDD25";
 }
 
-/* ---------- Safe Bunk Chip ---------- */
+/* ---------- Phase 1: Safe Bunk / Cooked Math ---------- */
 function safeBunkChip(sub) {
   const s = stats(sub);
   if (s.total === 0) return "<span class='neutral'>No Data</span>";
 
   const currentPercent = (s.present / s.total) * 100;
 
+  // Cooked logic: Math for how many to hit 75%
   if (currentPercent < TARGET) {
-    return "<span class='danger'>Below Target</span>";
+    const needed = Math.ceil(3 * s.total - 4 * s.present);
+    return "<span class='danger'>Attend " + needed + " more</span>";
   }
 
+  // Safe logic: Math for how many you can drop
   let canSkip = 0;
   while ((s.present / (s.total + canSkip)) * 100 >= TARGET) {
     canSkip++;
@@ -177,7 +244,7 @@ function safeBunkChip(sub) {
   canSkip = canSkip - 1;
 
   if (canSkip <= 0) {
-    return "<span class='warning'>No Safe Bunks</span>";
+    return "<span class='warning'>On the edge</span>";
   }
 
   if (canSkip === 1) {
@@ -228,6 +295,7 @@ function calendarView(sub, index) {
     let classes = "day";
     if (status === "present") classes += " present";
     if (status === "absent") classes += " absent";
+    if (status === "cancelled") classes += " cancelled";
     if (isToday) classes += " today";
 
     html += "<div class='" + classes + "'>" + d;
@@ -236,6 +304,7 @@ function calendarView(sub, index) {
       html += "<div class='popover'>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','present')\">P</button>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','absent')\">A</button>";
+      html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','cancelled')\">C</button>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','clear')\">\u2715</button>";
       html += "</div>";
     }
@@ -254,14 +323,16 @@ function render() {
 
   subjects.forEach(function (sub, i) {
     const s = stats(sub);
-    const percent = s.total === 0 ? 0 :
-      ((s.present / s.total) * 100).toFixed(1);
+    const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
 
     const div = document.createElement("div");
     div.className = "subject";
 
     div.innerHTML =
+      "<div style='display:flex; gap:8px; justify-content:flex-end; margin-bottom:8px;'>" +
+      "<button class='delete-btn' style='background:#f3f4f6; color:#1f2937;' onclick='openEditModal(" + i + ")'>Edit</button>" +
       "<button class='delete-btn' onclick='deleteSubject(" + i + ")'>Delete</button>" +
+      "</div>" +
 
       "<div class='subject-header'>" +
       "<div class='subject-title'>" + sub.name + "</div>" +

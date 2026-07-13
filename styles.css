@@ -304,6 +304,16 @@ body.dark .month-arrows span:hover{
 .absent{
   background:rgba(0,0,0,0.06);
 }
+/* Cancelled state */
+.cancelled {
+  background: transparent;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  color: var(--text-secondary);
+}
+
+body.dark .cancelled {
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+}
 
 body.dark .absent{
   background:rgba(255,255,255,0.1);
