@@ -329,9 +329,10 @@ function render() {
     div.className = "subject";
 
     div.innerHTML =
-      "<div style='display:flex; gap:8px; justify-content:flex-end; margin-bottom:8px;'>" +
-      "<button class='delete-btn' style='background:#f3f4f6; color:#1f2937;' onclick='openEditModal(" + i + ")'>Edit</button>" +
-      "<button class='delete-btn' onclick='deleteSubject(" + i + ")'>Delete</button>" +
+      // Fixed wrapper: absolutely position the container, not the buttons
+      "<div style='position: absolute; right: 20px; top: 20px; display: flex; gap: 8px; z-index: 10;'>" +
+      "<button style='margin: 0; font-size: 12px; padding: 6px 12px; background: var(--calendar-bg); color: var(--text-primary);' onclick='openEditModal(" + i + ")'>Edit</button>" +
+      "<button style='margin: 0; font-size: 12px; padding: 6px 12px; background: #efefef; color: #2d2d2d;' onclick='deleteSubject(" + i + ")'>Delete</button>" +
       "</div>" +
 
       "<div class='subject-header'>" +
