@@ -25,6 +25,19 @@ if (localStorage.getItem("darkMode") === "true") {
 function toggleDark() {
   document.body.classList.toggle("dark");
   localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+  render();
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function showToast(message, type) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = "toast show" + (type === "error" ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.className = "toast";
+  }, 2600);
 }
 
 /* ---------- Data Export/Import ---------- */
@@ -33,41 +46,44 @@ function exportData() {
     subjects: subjects,
     darkMode: document.body.classList.contains("dark")
   };
-  const blob = new Blob([JSON.stringify(exportPayload)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `attendance_data_${formatDate(new Date())}.json`;
+  a.download = `bunkr_backup_${formatDate(new Date())}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  showToast("Backup downloaded");
 }
 
 function importData(event) {
   const file = event.target.files[0];
   if (!file) return;
-  
+
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const imported = JSON.parse(e.target.result);
-      if (imported.subjects) {
-        subjects = imported.subjects;
-        save();
-        if (imported.darkMode) {
-          document.body.classList.add("dark");
-          localStorage.setItem("darkMode", "true");
-        } else {
-          document.body.classList.remove("dark");
-          localStorage.setItem("darkMode", "false");
-        }
-        render();
+      if (!imported.subjects || !Array.isArray(imported.subjects)) {
+        throw new Error("Missing subjects array");
       }
+      subjects = imported.subjects;
+      save();
+      if (imported.darkMode) {
+        document.body.classList.add("dark");
+        localStorage.setItem("darkMode", "true");
+      } else {
+        document.body.classList.remove("dark");
+        localStorage.setItem("darkMode", "false");
+      }
+      render();
+      showToast("Data restored successfully");
     } catch (error) {
-      alert("Invalid JSON file.");
+      showToast("Invalid backup file", "error");
     }
   };
   reader.readAsText(file);
-  event.target.value = ""; // reset input
+  event.target.value = ""; // reset input so re-selecting the same file still fires onchange
 }
 
 /* ---------- Utilities ---------- */
@@ -75,8 +91,10 @@ function save() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
 }
 
+/* ---------- Modal (Add / Edit share one modal) ---------- */
 function openModal() {
   editIndex = null;
+  document.getElementById("modalTitle").textContent = "Add Subject";
   document.getElementById("subjectName").value = "";
   document.querySelectorAll(".checkbox-group input").forEach(cb => cb.checked = false);
   document.getElementById("addBtn").innerText = "Add";
@@ -87,21 +105,25 @@ function openModal() {
 function openEditModal(i) {
   editIndex = i;
   const sub = subjects[i];
+  document.getElementById("modalTitle").textContent = "Edit Subject";
   document.getElementById("subjectName").value = sub.name;
-  
+
   document.querySelectorAll(".checkbox-group input").forEach(cb => {
     cb.checked = sub.days.includes(cb.value);
   });
-  
+
   document.getElementById("addBtn").innerText = "Save";
   validateForm();
   document.getElementById("modal").classList.add("show");
 }
 
+function closeModal() {
+  document.getElementById("modal").classList.remove("show");
+  editIndex = null;
+}
+
 function outsideClick(e) {
-  if (e.target.id === "modal") {
-    document.getElementById("modal").classList.remove("show");
-  }
+  if (e.target.id === "modal") closeModal();
 }
 
 /* ---------- Validation ---------- */
@@ -122,19 +144,15 @@ function addSubject() {
   if (editIndex !== null) {
     subjects[editIndex].name = name;
     subjects[editIndex].days = days;
+    showToast("Subject updated");
   } else {
     subjects.push({ name: name, days: days, attendance: {} });
+    showToast("Subject added");
   }
-  
+
   save();
   render();
-
-  document.getElementById("subjectName").value = "";
-  checked.forEach(cb => cb.checked = false);
-  document.getElementById("addBtn").disabled = true;
-  document.getElementById("addBtn").innerText = "Add";
-  editIndex = null;
-  document.getElementById("modal").classList.remove("show");
+  closeModal();
 }
 
 /* ---------- Delete ---------- */
@@ -153,6 +171,7 @@ function confirmDelete() {
     subjects.splice(deleteIndex, 1);
     save();
     render();
+    showToast("Subject deleted");
   }
   closeConfirm();
 }
@@ -171,9 +190,9 @@ function markDate(index, dateStr, status) {
 function stats(sub) {
   let present = 0, total = 0;
   for (let d in sub.attendance) {
-    // Cancelled classes do not count towards the total or present stats
-    if (sub.attendance[d] === "cancelled") continue; 
-    
+    // Cancelled classes don't count towards total or present
+    if (sub.attendance[d] === "cancelled") continue;
+
     total++;
     if (sub.attendance[d] === "present") present++;
   }
@@ -222,35 +241,28 @@ function streakText(sub) {
   return streak + " Day Streak \uD83D\uDD25";
 }
 
-/* ---------- Phase 1: Safe Bunk / Cooked Math ---------- */
+/* ---------- Safe Bunk / Needed-to-recover Math ---------- */
 function safeBunkChip(sub) {
   const s = stats(sub);
   if (s.total === 0) return "<span class='neutral'>No Data</span>";
 
   const currentPercent = (s.present / s.total) * 100;
 
-  // Cooked logic: Math for how many to hit 75%
   if (currentPercent < TARGET) {
-    const needed = Math.ceil(3 * s.total - 4 * s.present);
-    return "<span class='danger'>Attend " + needed + " more</span>";
+    // Smallest x such that (present + x) / (total + x) >= TARGET/100
+    // solves to x >= 3*total - 4*present when TARGET = 75
+    const needed = Math.max(1, Math.ceil(3 * s.total - 4 * s.present));
+    return "<span class='danger'>Attend " + needed + " more in a row</span>";
   }
 
-  // Safe logic: Math for how many you can drop
   let canSkip = 0;
   while ((s.present / (s.total + canSkip)) * 100 >= TARGET) {
     canSkip++;
   }
-
   canSkip = canSkip - 1;
 
-  if (canSkip <= 0) {
-    return "<span class='warning'>On the edge</span>";
-  }
-
-  if (canSkip === 1) {
-    return "<span class='safe'>Safe to Skip 1 Class</span>";
-  }
-
+  if (canSkip <= 0) return "<span class='warning'>On the edge</span>";
+  if (canSkip === 1) return "<span class='safe'>Safe to Skip 1 Class</span>";
   return "<span class='safe'>Safe to Skip " + canSkip + " Classes</span>";
 }
 
@@ -321,6 +333,17 @@ function render() {
   const container = document.getElementById("subjects");
   container.innerHTML = "";
 
+  if (subjects.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">\uD83D\uDCDA</div>
+        <div class="empty-title">No subjects yet</div>
+        <div class="empty-text">Tap the + button to add your first subject and start tracking attendance.</div>
+      </div>
+    `;
+    return;
+  }
+
   subjects.forEach(function (sub, i) {
     const s = stats(sub);
     const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
@@ -329,10 +352,9 @@ function render() {
     div.className = "subject";
 
     div.innerHTML =
-      // Fixed wrapper: absolutely position the container, not the buttons
-      "<div style='position: absolute; right: 20px; top: 20px; display: flex; gap: 8px; z-index: 10;'>" +
-      "<button style='margin: 0; font-size: 12px; padding: 6px 12px; background: var(--calendar-bg); color: var(--text-primary);' onclick='openEditModal(" + i + ")'>Edit</button>" +
-      "<button style='margin: 0; font-size: 12px; padding: 6px 12px; background: #efefef; color: #2d2d2d;' onclick='deleteSubject(" + i + ")'>Delete</button>" +
+      "<div class='subject-actions'>" +
+      "<button class='icon-btn' onclick='openEditModal(" + i + ")'>Edit</button>" +
+      "<button class='icon-btn danger-icon' onclick='deleteSubject(" + i + ")'>Delete</button>" +
       "</div>" +
 
       "<div class='subject-header'>" +
