@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bunkr — Attendance Tracker</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23e7c5d9'/%3E%3Cpath d='M13 21l5 5 9-11' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#e7c5d9">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -68,5 +71,14 @@
 <div id="toast" class="toast"></div>
 
 <script src="script.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch((err) => {
+        console.error("Service worker registration failed:", err);
+      });
+    });
+  }
+</script>
 </body>
 </html>
