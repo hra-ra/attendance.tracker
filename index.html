@@ -13,6 +13,12 @@
 <body>
 
 <header class="app-header">
+  <button class="gear-btn" onclick="openSettings()" aria-label="Settings">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
   <div class="brand">
     <svg class="brand-logo" viewBox="0 0 100 100" width="34" height="34">
       <path d="M28 62 A26 26 0 0 1 72 62" fill="none" stroke="var(--gauge-track)" stroke-width="7" stroke-linecap="round"/>
@@ -25,28 +31,80 @@
   <p class="tagline">Know exactly how many classes you can skip.</p>
 </header>
 
-<div class="toolbar">
-  <button class="toggle" onclick="toggleDark()">Toggle Dark Mode</button>
-  <button class="toggle" id="muteToggle" onclick="toggleMute()">Mute Sounds</button>
-  <button class="toggle" onclick="exportData()">Export Data</button>
-  <button class="toggle" onclick="document.getElementById('importInput').click()">Import Data</button>
-  <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
-</div>
-
 <div class="container" id="subjects"></div>
 
 <button class="fab" id="fab" onclick="openModal()">+</button>
+
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSettings()"></div>
+<div class="sheet" id="settingsSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-row">
+    <div class="sheet-row-label">
+      <i class="sheet-icon">&#9789;</i>
+      <span>Dark mode</span>
+    </div>
+    <button class="switch" id="darkSwitch" onclick="toggleDark()"><span class="switch-knob"></span></button>
+  </div>
+  <div class="sheet-row">
+    <div class="sheet-row-label">
+      <i class="sheet-icon">&#9834;</i>
+      <span>Sounds</span>
+    </div>
+    <button class="switch" id="soundSwitch" onclick="toggleMute()"><span class="switch-knob"></span></button>
+  </div>
+  <div class="sheet-divider"></div>
+  <div class="sheet-actions">
+    <button class="sheet-action-btn" onclick="exportData()">Export</button>
+    <button class="sheet-action-btn" onclick="document.getElementById('importInput').click()">Import</button>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</div>
 
 <div class="modal" id="modal" onclick="outsideClick(event)">
   <div class="card" onclick="event.stopPropagation()">
     <h3 id="modalTitle">Add Subject</h3>
     <input id="subjectName" type="text" placeholder="Subject name" oninput="validateForm()">
     <div class="checkbox-group">
-      <label class="checkbox-row"><input type="checkbox" value="Mon" onchange="validateForm()"> Mon</label>
-      <label class="checkbox-row"><input type="checkbox" value="Tue" onchange="validateForm()"> Tue</label>
-      <label class="checkbox-row"><input type="checkbox" value="Wed" onchange="validateForm()"> Wed</label>
-      <label class="checkbox-row"><input type="checkbox" value="Thu" onchange="validateForm()"> Thu</label>
-      <label class="checkbox-row"><input type="checkbox" value="Fri" onchange="validateForm()"> Fri</label>
+      <div class="day-row">
+        <label class="checkbox-row"><input type="checkbox" value="Mon" onchange="onDayToggle('Mon')"> Mon</label>
+        <div class="day-stepper disabled" data-day="Mon">
+          <button type="button" onclick="stepDaySessions('Mon',-1)">&minus;</button>
+          <span id="sessions-Mon">1</span>
+          <button type="button" onclick="stepDaySessions('Mon',1)">+</button>
+        </div>
+      </div>
+      <div class="day-row">
+        <label class="checkbox-row"><input type="checkbox" value="Tue" onchange="onDayToggle('Tue')"> Tue</label>
+        <div class="day-stepper disabled" data-day="Tue">
+          <button type="button" onclick="stepDaySessions('Tue',-1)">&minus;</button>
+          <span id="sessions-Tue">1</span>
+          <button type="button" onclick="stepDaySessions('Tue',1)">+</button>
+        </div>
+      </div>
+      <div class="day-row">
+        <label class="checkbox-row"><input type="checkbox" value="Wed" onchange="onDayToggle('Wed')"> Wed</label>
+        <div class="day-stepper disabled" data-day="Wed">
+          <button type="button" onclick="stepDaySessions('Wed',-1)">&minus;</button>
+          <span id="sessions-Wed">1</span>
+          <button type="button" onclick="stepDaySessions('Wed',1)">+</button>
+        </div>
+      </div>
+      <div class="day-row">
+        <label class="checkbox-row"><input type="checkbox" value="Thu" onchange="onDayToggle('Thu')"> Thu</label>
+        <div class="day-stepper disabled" data-day="Thu">
+          <button type="button" onclick="stepDaySessions('Thu',-1)">&minus;</button>
+          <span id="sessions-Thu">1</span>
+          <button type="button" onclick="stepDaySessions('Thu',1)">+</button>
+        </div>
+      </div>
+      <div class="day-row">
+        <label class="checkbox-row"><input type="checkbox" value="Fri" onchange="onDayToggle('Fri')"> Fri</label>
+        <div class="day-stepper disabled" data-day="Fri">
+          <button type="button" onclick="stepDaySessions('Fri',-1)">&minus;</button>
+          <span id="sessions-Fri">1</span>
+          <button type="button" onclick="stepDaySessions('Fri',1)">+</button>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="cancel-btn-modal" onclick="closeModal()">Cancel</button>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "bunkr-cache-v3";
+const CACHE_NAME = "bunkr-cache-v6";
 const APP_SHELL = [
   "./",
   "./index.html",

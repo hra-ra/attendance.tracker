@@ -87,6 +87,7 @@ body {
 
 /* ---------- Header / Brand ---------- */
 .app-header {
+  position: relative;
   text-align: center;
   margin-bottom: var(--space-6);
 }
@@ -492,7 +493,6 @@ body.dark .month-arrows span:hover { background: rgba(255,255,255,0.08); }
 }
 
 .day.has-class { cursor: pointer; }
-.day.has-class:hover { transform: scale(1.05); }
 
 .today { box-shadow: 0 0 0 1.5px var(--accent); }
 
@@ -724,3 +724,323 @@ body.dark .popover button {
 .ring-target .ring-progress { stroke: var(--safe); }
 .ring-mid .ring-progress { stroke: var(--warn); }
 .ring-low .ring-progress { stroke: var(--danger); }
+
+/* ---------- Settings gear + bottom sheet ---------- */
+.gear-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: var(--transition-fast);
+}
+
+.gear-btn:hover { background: var(--accent-hover); }
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(43,43,40,0.35);
+  display: none;
+  z-index: 180;
+}
+
+.sheet-backdrop.show { display: block; }
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px 24px;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  z-index: 190;
+  box-shadow: var(--shadow-lg);
+}
+
+.sheet.show { transform: translateY(0); }
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--calendar-bg);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.sheet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 2px;
+}
+
+.sheet-row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+}
+
+.sheet-icon { font-style: normal; font-size: 16px; }
+
+.switch {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--calendar-bg);
+  position: relative;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: background 0.2s ease;
+}
+
+.switch.on { background: var(--safe); }
+
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--card);
+  transition: left 0.2s ease;
+}
+
+.switch.on .switch-knob { left: 18px; }
+
+.sheet-divider {
+  height: 1px;
+  background: var(--calendar-bg);
+  margin: 12px 2px;
+}
+
+.sheet-actions { display: flex; gap: 10px; }
+
+.sheet-action-btn {
+  flex: 1;
+  margin: 0;
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  padding: 10px;
+  font-size: var(--fs-base);
+  text-align: center;
+}
+
+/* ---------- Per-day stepper (modal) ---------- */
+.day-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.day-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.day-stepper.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.day-stepper button {
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.day-stepper span {
+  min-width: 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+/* ---------- Mixed-status day (multi-session subjects) ---------- */
+.mixed {
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.day-fraction {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 8px;
+  opacity: 0.75;
+}
+
+.popover.multi {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px;
+  gap: 6px;
+}
+
+.popover.multi .session-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.popover.multi .session-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  width: 20px;
+  flex-shrink: 0;
+}
+
+/* ---------- List view tabs ---------- */
+.list-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  background: var(--calendar-bg);
+  padding: 4px;
+  border-radius: var(--radius-pill);
+}
+
+.list-tab {
+  flex: 1;
+  margin: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  padding: 9px 0;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  text-align: center;
+}
+
+.list-tab.active {
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Today view ---------- */
+.today-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+  padding: 0 2px;
+}
+
+.today-progress.done {
+  color: var(--safe-deep);
+  font-weight: 600;
+}
+
+.today-card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.28s ease;
+}
+
+.today-card-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.today-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px 0;
+}
+
+.today-session-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.today-status-tag {
+  font-size: var(--fs-xs);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  margin-right: auto;
+  margin-left: 8px;
+}
+
+.today-status-tag.st-present { background: var(--safe-bg); color: var(--safe-deep); }
+.today-status-tag.st-absent { background: var(--danger-bg); color: var(--danger); }
+.today-status-tag.st-cancelled { background: var(--neutral-bg); color: var(--text-secondary); }
+.today-status-tag.st-unmarked { background: var(--neutral-bg); color: var(--text-secondary); }
+
+.today-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.today-actions button {
+  margin: 0;
+  padding: 5px 11px;
+  font-size: var(--fs-xs);
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+}
+
+/* ---------- Today view row mark animations ---------- */
+.today-session-row.anim-present { animation: rowPresentFlash 0.35s ease; }
+.today-session-row.anim-absent { animation: rowAbsentFlash 0.35s ease; }
+.today-session-row.anim-cancelled { animation: rowCancelledFlash 0.4s ease; }
+
+@keyframes rowPresentFlash {
+  0% { background: transparent; }
+  40% { background: var(--safe-bg); }
+  100% { background: transparent; }
+}
+@keyframes rowAbsentFlash {
+  0% { background: transparent; }
+  40% { background: var(--danger-bg); }
+  100% { background: transparent; }
+}
+@keyframes rowCancelledFlash {
+  0% { background: transparent; }
+  40% { background: var(--neutral-bg); }
+  100% { background: transparent; }
+}
