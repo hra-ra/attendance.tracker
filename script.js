@@ -9,6 +9,12 @@ let currentYear = new Date().getFullYear();
 const today = new Date();
 const todayString = formatDate(today);
 
+/* ---------- View state ---------- */
+let viewState = "list";        // "list" | "detail"
+let activeSubjectIndex = null; // which subject the detail view is showing
+let activeDayKey = null;       // which day's tap-popover is open, e.g. "2-2026-07-15"
+let pendingAnim = null;        // { key, status } while a mark animation is playing
+
 /* ---------- Date Utility ---------- */
 function formatDate(d) {
   const year = d.getFullYear();
@@ -26,6 +32,72 @@ function toggleDark() {
   document.body.classList.toggle("dark");
   localStorage.setItem("darkMode", document.body.classList.contains("dark"));
   render();
+}
+
+/* ---------- Sound mute persistence ---------- */
+function isMuted() {
+  return localStorage.getItem("muted") === "true";
+}
+
+function toggleMute() {
+  const muted = !isMuted();
+  localStorage.setItem("muted", muted);
+  updateMuteButton();
+  showToast(muted ? "Sounds muted" : "Sounds on");
+}
+
+function updateMuteButton() {
+  const btn = document.getElementById("muteToggle");
+  if (btn) btn.textContent = isMuted() ? "Unmute Sounds" : "Mute Sounds";
+}
+
+/* ---------- Sound synthesis (no audio files needed) ---------- */
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+  }
+  return audioCtx;
+}
+
+function playTone(freqStart, freqEnd, duration, type) {
+  if (isMuted()) return;
+  try {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type || "sine";
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(freqStart, now);
+    if (freqEnd && freqEnd !== freqStart) {
+      osc.frequency.exponentialRampToValueAtTime(freqEnd, now + duration);
+    }
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  } catch (e) {
+    /* Web Audio unavailable - fail silently */
+  }
+}
+
+function playSound(status) {
+  if (status === "present") {
+    // Bright quick upward chirp
+    playTone(720, 980, 0.16, "sine");
+  } else if (status === "absent") {
+    // Duller, lower thud - not harsh, just distinct
+    playTone(190, 150, 0.2, "triangle");
+  } else if (status === "cancelled") {
+    // Soft descending swoosh - cancelled is neutral/relieving, not bad
+    playTone(700, 340, 0.22, "sine");
+  }
 }
 
 /* ---------- Toast ---------- */
@@ -76,7 +148,7 @@ function importData(event) {
         document.body.classList.remove("dark");
         localStorage.setItem("darkMode", "false");
       }
-      render();
+      goToList();
       showToast("Data restored successfully");
     } catch (error) {
       showToast("Invalid backup file", "error");
@@ -90,6 +162,54 @@ function importData(event) {
 function save() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
 }
+
+/* ---------- Navigation: list <-> detail ---------- */
+function openSubject(i) {
+  activeSubjectIndex = i;
+  viewState = "detail";
+  activeDayKey = null;
+  currentMonth = new Date().getMonth();
+  currentYear = new Date().getFullYear();
+  history.pushState({ view: "detail", index: i }, "", "#subject-" + i);
+  render();
+}
+
+function goToList() {
+  viewState = "list";
+  activeSubjectIndex = null;
+  activeDayKey = null;
+  render();
+}
+
+function backToList() {
+  // Let the browser/hardware back button be the single source of truth
+  // so the phone's back gesture doesn't leave the app entirely.
+  history.back();
+}
+
+window.addEventListener("popstate", function (e) {
+  const state = e.state;
+  if (state && state.view === "detail" && subjects[state.index]) {
+    activeSubjectIndex = state.index;
+    viewState = "detail";
+  } else {
+    activeSubjectIndex = null;
+    viewState = "list";
+  }
+  activeDayKey = null;
+  render();
+});
+
+/* Close an open day-actions popover when tapping anywhere else */
+document.addEventListener("click", function (e) {
+  if (activeDayKey === null) return;
+  const dayEl = e.target.closest(".day");
+  const key = dayEl ? dayEl.dataset.key : null;
+  if (key !== activeDayKey) {
+    activeDayKey = null;
+    render();
+  }
+});
 
 /* ---------- Modal (Add / Edit share one modal) ---------- */
 function openModal() {
@@ -170,21 +290,44 @@ function confirmDelete() {
   if (deleteIndex !== null) {
     subjects.splice(deleteIndex, 1);
     save();
-    render();
+    closeConfirm();
+    goToList();
     showToast("Subject deleted");
+    return;
   }
   closeConfirm();
 }
 
 /* ---------- Attendance ---------- */
+function toggleDayActions(index, dateStr) {
+  const key = index + "-" + dateStr;
+  activeDayKey = (activeDayKey === key) ? null : key;
+  render();
+}
+
 function markDate(index, dateStr, status) {
+  const key = index + "-" + dateStr;
+  activeDayKey = null;
+
   if (status === "clear") {
     delete subjects[index].attendance[dateStr];
-  } else {
-    subjects[index].attendance[dateStr] = status;
+    save();
+    render();
+    return;
   }
-  save();
+
+  // Play the sound immediately, then let the mark animation run on the
+  // still-visible cell before the re-render commits the final state.
+  playSound(status);
+  pendingAnim = { key: key, status: status };
   render();
+
+  setTimeout(() => {
+    subjects[index].attendance[dateStr] = status;
+    pendingAnim = null;
+    save();
+    render();
+  }, 340);
 }
 
 function stats(sub) {
@@ -199,23 +342,28 @@ function stats(sub) {
   return { present, total };
 }
 
-function circularProgress(percent) {
-  const radius = 42;
+function circularProgress(percent, size) {
+  size = size || 100;
+  const strokeWidth = size <= 70 ? 6 : 8;
+  const radius = size / 2 - strokeWidth - 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
+  const c = size / 2;
 
   let colorClass = "ring-low";
   if (percent >= 85) colorClass = "ring-high";
   else if (percent >= 75) colorClass = "ring-target";
   else if (percent >= 60) colorClass = "ring-mid";
 
+  const fontSize = Math.max(11, Math.round(size * 0.15));
+
   return `
-  <div class="ring-container ${colorClass}">
-    <svg width="100" height="100">
-      <circle class="ring-bg" cx="50" cy="50" r="${radius}" />
-      <circle class="ring-progress" cx="50" cy="50" r="${radius}" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" />
+  <div class="ring-container ${colorClass}" style="width:${size}px;height:${size}px;">
+    <svg width="${size}" height="${size}">
+      <circle class="ring-bg" cx="${c}" cy="${c}" r="${radius}" style="stroke-width:${strokeWidth}px;" />
+      <circle class="ring-progress" cx="${c}" cy="${c}" r="${radius}" style="stroke-width:${strokeWidth}px;" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" />
     </svg>
-    <div class="ring-text">${percent}%</div>
+    <div class="ring-text" style="font-size:${fontSize}px;">${percent}%</div>
   </div>
   `;
 }
@@ -271,10 +419,11 @@ function changeMonth(offset) {
   currentMonth += offset;
   if (currentMonth > 11) { currentMonth = 0; currentYear++; }
   if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  activeDayKey = null;
   render();
 }
 
-/* ---------- Calendar ---------- */
+/* ---------- Calendar (used only in detail view) ---------- */
 function calendarView(sub, index) {
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -299,21 +448,33 @@ function calendarView(sub, index) {
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(currentYear, currentMonth, d);
     const dateStr = formatDate(dateObj);
+    const key = index + "-" + dateStr;
     const status = sub.attendance[dateStr];
     const dayShort = dateObj.toLocaleString("en-us", { weekday: "short" });
     const isClass = sub.days.includes(dayShort);
     const isToday = (dateStr === todayString);
+    const isActive = (activeDayKey === key);
+    const anim = (pendingAnim && pendingAnim.key === key) ? pendingAnim.status : null;
 
     let classes = "day";
+    if (isClass) classes += " has-class";
     if (status === "present") classes += " present";
     if (status === "absent") classes += " absent";
     if (status === "cancelled") classes += " cancelled";
     if (isToday) classes += " today";
+    if (isActive) classes += " active";
+    if (anim) classes += " anim-" + anim;
 
-    html += "<div class='" + classes + "'>" + d;
+    const clickAttr = isClass ? " onclick=\"toggleDayActions(" + index + ",'" + dateStr + "')\"" : "";
+
+    html += "<div class='" + classes + "' data-key='" + key + "'" + clickAttr + ">" + d;
+
+    if (anim === "present") {
+      html += "<svg class='check-draw' viewBox='0 0 24 24'><path d='M5 13l4 4 10-10'/></svg>";
+    }
 
     if (isClass) {
-      html += "<div class='popover'>";
+      html += "<div class='popover' onclick='event.stopPropagation()'>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','present')\">P</button>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','absent')\">A</button>";
       html += "<button onclick=\"markDate(" + index + ",'" + dateStr + "','cancelled')\">C</button>";
@@ -328,10 +489,9 @@ function calendarView(sub, index) {
   return html;
 }
 
-/* ---------- Render ---------- */
-function render() {
+/* ---------- List view ---------- */
+function renderListView() {
   const container = document.getElementById("subjects");
-  container.innerHTML = "";
 
   if (subjects.length === 0) {
     container.innerHTML = `
@@ -344,43 +504,85 @@ function render() {
     return;
   }
 
+  let html = "";
   subjects.forEach(function (sub, i) {
     const s = stats(sub);
     const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
 
-    const div = document.createElement("div");
-    div.className = "subject";
-
-    div.innerHTML =
-      "<div class='subject-actions'>" +
-      "<button class='icon-btn' onclick='openEditModal(" + i + ")'>Edit</button>" +
-      "<button class='icon-btn danger-icon' onclick='deleteSubject(" + i + ")'>Delete</button>" +
+    html +=
+      "<div class='subject-row' onclick='openSubject(" + i + ")'>" +
+      "<div class='row-ring'>" + circularProgress(percent, 60) + "</div>" +
+      "<div class='row-info'>" +
+      "<div class='row-title'>" + sub.name + "</div>" +
+      "<div class='row-meta'>" +
+      "<span class='row-streak'>" + streakText(sub) + "</span>" +
+      "<span class='bunk-chip'>" + safeBunkChip(sub) + "</span>" +
       "</div>" +
-
-      "<div class='subject-header'>" +
-      "<div class='subject-title'>" + sub.name + "</div>" +
-      circularProgress(percent) +
       "</div>" +
-
-      "<div class='header-divider'></div>" +
-
-      "<div class='mini-stats'>" +
-      "<div>Present<br><strong>" + s.present + "</strong></div>" +
-      "<div>Absent<br><strong>" + (s.total - s.present) + "</strong></div>" +
-      "<div>Total<br><strong>" + s.total + "</strong></div>" +
-      "</div>" +
-
-      "<div class='top-status-row'>" +
-      "<div class='streak-text'>" + streakText(sub) + "</div>" +
-      "<div class='bunk-chip'>" + safeBunkChip(sub) + "</div>" +
-      "</div>" +
-
-      "<div class='calendar-wrapper'>" +
-      calendarView(sub, i) +
+      "<div class='row-chevron'>\u203A</div>" +
       "</div>";
-
-    container.appendChild(div);
   });
+
+  container.innerHTML = html;
 }
 
+/* ---------- Detail view ---------- */
+function renderDetailView() {
+  const container = document.getElementById("subjects");
+  const sub = subjects[activeSubjectIndex];
+  if (!sub) { goToList(); return; }
+
+  const i = activeSubjectIndex;
+  const s = stats(sub);
+  const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
+
+  container.innerHTML =
+    "<div class='detail-topbar'>" +
+    "<button class='back-btn' onclick='backToList()'>\u2039 Back</button>" +
+    "<div class='detail-actions'>" +
+    "<button class='icon-btn' onclick='openEditModal(" + i + ")'>Edit</button>" +
+    "<button class='icon-btn danger-icon' onclick='deleteSubject(" + i + ")'>Delete</button>" +
+    "</div>" +
+    "</div>" +
+
+    "<div class='subject'>" +
+    "<div class='subject-header'>" +
+    "<div class='subject-title'>" + sub.name + "</div>" +
+    circularProgress(percent, 100) +
+    "</div>" +
+
+    "<div class='header-divider'></div>" +
+
+    "<div class='mini-stats'>" +
+    "<div>Present<br><strong>" + s.present + "</strong></div>" +
+    "<div>Absent<br><strong>" + (s.total - s.present) + "</strong></div>" +
+    "<div>Total<br><strong>" + s.total + "</strong></div>" +
+    "</div>" +
+
+    "<div class='top-status-row'>" +
+    "<div class='streak-text'>" + streakText(sub) + "</div>" +
+    "<div class='bunk-chip'>" + safeBunkChip(sub) + "</div>" +
+    "</div>" +
+
+    "<div class='calendar-wrapper'>" +
+    calendarView(sub, i) +
+    "</div>" +
+    "</div>";
+}
+
+/* ---------- Render dispatcher ---------- */
+function render() {
+  const fab = document.getElementById("fab");
+  if (viewState === "detail") {
+    if (fab) fab.style.display = "none";
+    renderDetailView();
+  } else {
+    if (fab) fab.style.display = "";
+    renderListView();
+  }
+}
+
+// Make sure popping back to the very first page load lands on the list
+history.replaceState({ view: "list" }, "", "#");
+updateMuteButton();
 render();

@@ -491,13 +491,14 @@ body.dark .month-arrows span:hover { background: rgba(255,255,255,0.08); }
   transition: var(--transition-base);
 }
 
-.day:hover { transform: scale(1.05); cursor: pointer; }
+.day.has-class { cursor: pointer; }
+.day.has-class:hover { transform: scale(1.05); }
 
 .today { box-shadow: 0 0 0 1.5px var(--accent); }
 
-.present { background: var(--safe-bg); color: var(--safe-deep); }
+.present { background: var(--safe-bg); color: var(--safe-deep); font-weight: 600; }
 
-.absent { background: var(--neutral-bg); }
+.absent { background: var(--danger-bg); color: var(--danger); font-weight: 600; }
 
 .cancelled {
   background: transparent;
@@ -515,10 +516,11 @@ body.dark .month-arrows span:hover { background: rgba(255,255,255,0.08); }
   padding: 6px 8px;
   border-radius: var(--radius-pill);
   backdrop-filter: blur(12px);
-  background: rgba(250,247,240,0.75);
+  background: rgba(250,247,240,0.9);
+  z-index: 5;
 }
 
-body.dark .popover { background: rgba(38,36,32,0.75); }
+body.dark .popover { background: rgba(38,36,32,0.9); }
 
 .popover button {
   background: none;
@@ -535,7 +537,51 @@ body.dark .popover button {
   color: var(--text-primary);
 }
 
-.day:hover .popover { display: flex; }
+/* Tap/click to reveal, not hover -- hover made it too easy to land on the
+   wrong day when moving the cursor toward the popover on a laptop, and
+   hover doesn't exist at all on touch. */
+.day.active .popover { display: flex; }
+
+/* ---------- Mark animations ---------- */
+.day.anim-present { animation: dayPresentPop 0.35s ease; }
+@keyframes dayPresentPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.day.anim-absent { animation: dayAbsentShake 0.35s ease; }
+@keyframes dayAbsentShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+
+.day.anim-cancelled { animation: dayCancelledFade 0.4s ease; }
+@keyframes dayCancelledFade {
+  0% { opacity: 0.3; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.check-draw {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.check-draw path {
+  fill: none;
+  stroke: var(--safe-deep);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: checkDraw 0.32s ease forwards;
+}
+@keyframes checkDraw {
+  to { stroke-dashoffset: 0; }
+}
 
 /* ---------- Stats / chips ---------- */
 .mini-stats {
@@ -568,6 +614,86 @@ body.dark .popover button {
 .warning { background: var(--warn-bg); color: var(--warn); }
 .danger { background: var(--danger-bg); color: var(--danger); }
 .neutral { background: var(--neutral-bg); color: var(--text-secondary); }
+
+/* ---------- List view ---------- */
+.subject-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  animation: fadeInUp 0.28s ease;
+}
+
+.subject-row:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.row-ring { flex-shrink: 0; }
+
+.row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.row-streak {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.row-chevron {
+  font-size: 18px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ---------- Detail view ---------- */
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.back-btn {
+  margin: 0;
+  background: none;
+  padding: 6px 4px;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.back-btn:hover { background: none; opacity: 0.7; }
+
+.detail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
 
 /* ---------- Ring ---------- */
 .ring-container { position: relative; width: 100px; height: 100px; flex-shrink: 0; }

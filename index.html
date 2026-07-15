@@ -27,6 +27,7 @@
 
 <div class="toolbar">
   <button class="toggle" onclick="toggleDark()">Toggle Dark Mode</button>
+  <button class="toggle" id="muteToggle" onclick="toggleMute()">Mute Sounds</button>
   <button class="toggle" onclick="exportData()">Export Data</button>
   <button class="toggle" onclick="document.getElementById('importInput').click()">Import Data</button>
   <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
@@ -34,7 +35,7 @@
 
 <div class="container" id="subjects"></div>
 
-<button class="fab" onclick="openModal()">+</button>
+<button class="fab" id="fab" onclick="openModal()">+</button>
 
 <div class="modal" id="modal" onclick="outsideClick(event)">
   <div class="card" onclick="event.stopPropagation()">
