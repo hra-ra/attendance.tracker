@@ -38,6 +38,14 @@
 <div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSettings()"></div>
 <div class="sheet" id="settingsSheet">
   <div class="sheet-handle"></div>
+  <div class="sheet-row" id="installRow" style="display: none;">
+    <div class="sheet-row-label">
+      <i class="sheet-icon">&#128241;</i>
+      <span>Install App</span>
+    </div>
+    <button class="sheet-link-btn" onclick="triggerInstall()">Install</button>
+  </div>
+  <div class="sheet-divider" id="installDivider" style="display: none;"></div>
   <div class="sheet-row">
     <div class="sheet-row-label">
       <i class="sheet-icon">&#9789;</i>

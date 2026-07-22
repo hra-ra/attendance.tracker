@@ -1002,3 +1002,41 @@ function render() {
 history.replaceState({ view: "list" }, "", "#");
 updateSwitches();
 render();
+// ------- Custom PWA Install Prompt ------ 
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Show the Install row and divider in Settings
+  const row = document.getElementById('installRow');
+  const divider = document.getElementById('installDivider');
+  if (row) row.style.display = 'flex';
+  if (divider) divider.style.display = 'block';
+});
+
+function triggerInstall() {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((choiceResult) => {
+    if (choiceResult.outcome === 'accepted') {
+      showToast('App installed!');
+    }
+    deferredPrompt = null;
+    hideInstallUI();
+  });
+}
+
+function hideInstallUI() {
+  const row = document.getElementById('installRow');
+  const divider = document.getElementById('installDivider');
+  if (row) row.style.display = 'none';
+  if (divider) divider.style.display = 'none';
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  hideInstallUI();
+});
