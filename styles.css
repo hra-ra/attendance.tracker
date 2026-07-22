@@ -283,7 +283,9 @@ button:active { transform: scale(0.97); }
   transform: scale(1);
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="number"],
+input[type="date"] {
   width: 100%;
   padding: 12px;
   border-radius: var(--radius-md);
@@ -291,6 +293,37 @@ input[type="text"] {
   background: var(--bg);
   color: var(--text-primary);
   font-size: var(--fs-base);
+}
+
+.target-row {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.target-row label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.target-row input {
+  width: 76px;
+  padding: 8px;
+  text-align: center;
+}
+
+.target-label {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.row-target {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
 }
 
 .checkbox-group {
@@ -439,6 +472,9 @@ body.dark .danger-btn {
   z-index: 200;
   max-width: 80vw;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toast.show {
@@ -448,6 +484,19 @@ body.dark .danger-btn {
 }
 
 .toast.error { background: var(--danger); }
+
+.toast-undo {
+  margin: 0 0 0 12px;
+  padding: 4px 12px;
+  background: rgba(255,255,255,0.18);
+  color: var(--card);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.toast-undo:hover { background: rgba(255,255,255,0.3); }
 
 /* ---------- Month navigation ---------- */
 .month-nav {
@@ -506,6 +555,28 @@ body.dark .month-arrows span:hover { background: rgba(255,255,255,0.08); }
   color: var(--text-secondary);
 }
 
+.holiday {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(43,43,40,0.05),
+    rgba(43,43,40,0.05) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+body.dark .holiday {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.07),
+    rgba(255,255,255,0.07) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
 .popover {
   position: absolute;
   bottom: 110%;
@@ -541,6 +612,21 @@ body.dark .popover button {
    wrong day when moving the cursor toward the popover on a laptop, and
    hover doesn't exist at all on touch. */
 .day.active .popover { display: flex; }
+
+/* The popover is centered on its day cell by default, which pushes it
+   half off-screen for the first and last columns of the grid (Sun/Sat).
+   For those columns, anchor to the cell's own edge instead so the whole
+   popover - and its P/A/C/X buttons - stays inside the card. */
+.day.col-edge-left .popover {
+  left: 0;
+  transform: none;
+}
+
+.day.col-edge-right .popover {
+  left: auto;
+  right: 0;
+  transform: none;
+}
 
 /* ---------- Mark animations ---------- */
 .day.anim-present { animation: dayPresentPop 0.35s ease; }
@@ -834,7 +920,76 @@ body.dark .popover button {
   margin: 12px 2px;
 }
 
+.sheet-link-btn {
+  margin: 0;
+  background: none;
+  color: var(--accent-strong);
+  padding: 6px 4px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.sheet-link-btn:hover { background: none; opacity: 0.75; }
+
 .sheet-actions { display: flex; gap: 10px; }
+
+/* ---------- Semester breaks modal ---------- */
+.holiday-list {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holiday-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
+}
+
+.holiday-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--fs-sm);
+  background: var(--calendar-bg);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  gap: 10px;
+}
+
+.holiday-item small {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.holiday-item button {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  background: var(--danger-bg);
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.holiday-form {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holiday-dates {
+  display: flex;
+  gap: 8px;
+}
+
+.holiday-form button {
+  margin: 0;
+  width: 100%;
+}
 
 .sheet-action-btn {
   flex: 1;
@@ -952,19 +1107,35 @@ body.dark .popover button {
 }
 
 /* ---------- Today view ---------- */
+.today-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+  padding: 0 2px;
+}
+
 .today-progress {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
-  padding: 0 2px;
 }
 
 .today-progress.done {
   color: var(--safe-deep);
   font-weight: 600;
+}
+
+.mark-all-btn {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: var(--fs-xs);
+  background: var(--calendar-bg);
+  color: var(--text-primary);
 }
 
 .today-card {

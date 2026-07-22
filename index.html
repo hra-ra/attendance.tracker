@@ -53,6 +53,14 @@
     <button class="switch" id="soundSwitch" onclick="toggleMute()"><span class="switch-knob"></span></button>
   </div>
   <div class="sheet-divider"></div>
+  <div class="sheet-row">
+    <div class="sheet-row-label">
+      <i class="sheet-icon">&#128197;</i>
+      <span>Semester breaks</span>
+    </div>
+    <button class="sheet-link-btn" onclick="openHolidayModal()">Manage</button>
+  </div>
+  <div class="sheet-divider"></div>
   <div class="sheet-actions">
     <button class="sheet-action-btn" onclick="exportData()">Export</button>
     <button class="sheet-action-btn" onclick="document.getElementById('importInput').click()">Import</button>
@@ -106,6 +114,10 @@
         </div>
       </div>
     </div>
+    <div class="target-row">
+      <label for="subjectTarget">Target attendance %</label>
+      <input id="subjectTarget" type="number" min="50" max="100" value="75" oninput="validateForm()">
+    </div>
     <div class="modal-actions">
       <button class="cancel-btn-modal" onclick="closeModal()">Cancel</button>
       <button id="addBtn" onclick="addSubject()" disabled>Add</button>
@@ -122,6 +134,24 @@
     <div class="confirm-actions">
       <button class="cancel-btn" onclick="closeConfirm()">Cancel</button>
       <button class="danger-btn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="holidayModal" onclick="outsideClickHoliday(event)">
+  <div class="card" onclick="event.stopPropagation()">
+    <h3>Semester Breaks</h3>
+    <div id="holidayList" class="holiday-list"></div>
+    <div class="holiday-form">
+      <input id="holidayLabel" type="text" placeholder="Label (e.g. Diwali Break)">
+      <div class="holiday-dates">
+        <input id="holidayStart" type="date">
+        <input id="holidayEnd" type="date">
+      </div>
+      <button onclick="addHoliday()">Add Break</button>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn-modal" onclick="closeHolidayModal()">Close</button>
     </div>
   </div>
 </div>

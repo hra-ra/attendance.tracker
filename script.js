@@ -1,7 +1,16 @@
 let editIndex = null;
 let deleteIndex = null;
 let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
-const TARGET = 75;
+const DEFAULT_TARGET = 75;
+
+/* Semester breaks / off-days: global date ranges that apply across all
+   subjects (exams, holidays, term breaks). Stored separately from subjects
+   since they aren't tied to any one class. */
+let holidays = JSON.parse(localStorage.getItem("holidays")) || [];
+
+/* Generic undo buffer: a few destructive/bulk actions snapshot the whole
+   subjects array right before they run, so a toast can offer one-tap undo. */
+let undoSnapshot = null;
 
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
@@ -38,6 +47,9 @@ function normalizeSubjects() {
       if (!Array.isArray(sub.attendance[d])) {
         sub.attendance[d] = [sub.attendance[d]];
       }
+    }
+    if (typeof sub.target !== "number" || isNaN(sub.target)) {
+      sub.target = DEFAULT_TARGET;
     }
   });
 }
@@ -154,22 +166,55 @@ function playSound(status) {
   }
 }
 
-/* ---------- Toast ---------- */
+/* ---------- Toast (optionally offers a one-tap Undo) ---------- */
 let toastTimer = null;
-function showToast(message, type) {
+function showToast(message, type, withUndo) {
   const toast = document.getElementById("toast");
-  toast.textContent = message;
+  toast.innerHTML = "";
+
+  const msgSpan = document.createElement("span");
+  msgSpan.textContent = message;
+  toast.appendChild(msgSpan);
+
+  if (withUndo) {
+    const undoBtn = document.createElement("button");
+    undoBtn.className = "toast-undo";
+    undoBtn.textContent = "Undo";
+    undoBtn.onclick = function (e) {
+      e.stopPropagation();
+      performUndo();
+    };
+    toast.appendChild(undoBtn);
+  }
+
   toast.className = "toast show" + (type === "error" ? " error" : "");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.className = "toast";
-  }, 2600);
+    if (withUndo) undoSnapshot = null; // undo window has closed
+  }, withUndo ? 5000 : 2600);
+}
+
+/* ---------- Undo (generic, snapshot-based) ---------- */
+function pushUndoSnapshot() {
+  undoSnapshot = JSON.parse(JSON.stringify(subjects));
+}
+
+function performUndo() {
+  if (!undoSnapshot) return;
+  subjects = undoSnapshot;
+  undoSnapshot = null;
+  save();
+  document.getElementById("toast").className = "toast";
+  render();
+  showToast("Undone");
 }
 
 /* ---------- Data Export/Import ---------- */
 function exportData() {
   const exportPayload = {
     subjects: subjects,
+    holidays: holidays,
     darkMode: document.body.classList.contains("dark")
   };
   const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
@@ -196,7 +241,9 @@ function importData(event) {
       }
       subjects = imported.subjects;
       normalizeSubjects();
+      holidays = Array.isArray(imported.holidays) ? imported.holidays : [];
       save();
+      saveHolidays();
       if (imported.darkMode) {
         document.body.classList.add("dark");
         localStorage.setItem("darkMode", "true");
@@ -218,6 +265,90 @@ function importData(event) {
 /* ---------- Utilities ---------- */
 function save() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
+}
+
+function saveHolidays() {
+  localStorage.setItem("holidays", JSON.stringify(holidays));
+}
+
+/* ---------- Semester breaks / off-days ---------- */
+function isHoliday(dateStr) {
+  return holidays.some(h => dateStr >= h.start && dateStr <= h.end);
+}
+
+function holidayLabelFor(dateStr) {
+  const h = holidays.find(h => dateStr >= h.start && dateStr <= h.end);
+  return h ? h.label : null;
+}
+
+function openHolidayModal() {
+  closeSettings();
+  renderHolidayList();
+  document.getElementById("holidayModal").classList.add("show");
+}
+
+function closeHolidayModal() {
+  document.getElementById("holidayModal").classList.remove("show");
+}
+
+function outsideClickHoliday(e) {
+  if (e.target.id === "holidayModal") closeHolidayModal();
+}
+
+function renderHolidayList() {
+  const list = document.getElementById("holidayList");
+  const sorted = [...holidays].sort((a, b) => a.start.localeCompare(b.start));
+
+  if (sorted.length === 0) {
+    list.innerHTML = "<div class='holiday-empty'>No breaks added yet.</div>";
+    return;
+  }
+
+  list.innerHTML = sorted.map(h => {
+    const range = h.start === h.end ? h.start : (h.start + " \u2192 " + h.end);
+    return "<div class='holiday-item'>" +
+      "<span>" + h.label + "<br><small>" + range + "</small></span>" +
+      "<button onclick=\"removeHoliday('" + h.id + "')\">Remove</button>" +
+      "</div>";
+  }).join("");
+}
+
+function addHoliday() {
+  const label = document.getElementById("holidayLabel").value.trim() || "Break";
+  const start = document.getElementById("holidayStart").value;
+  const end = document.getElementById("holidayEnd").value || start;
+
+  if (!start) {
+    showToast("Pick a start date", "error");
+    return;
+  }
+  if (end < start) {
+    showToast("End date is before start date", "error");
+    return;
+  }
+
+  holidays.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    label,
+    start,
+    end
+  });
+  saveHolidays();
+  renderHolidayList();
+  render();
+
+  document.getElementById("holidayLabel").value = "";
+  document.getElementById("holidayStart").value = "";
+  document.getElementById("holidayEnd").value = "";
+  showToast("Break added");
+}
+
+function removeHoliday(id) {
+  holidays = holidays.filter(h => h.id !== id);
+  saveHolidays();
+  renderHolidayList();
+  render();
+  showToast("Break removed");
 }
 
 /* ---------- Navigation: list <-> detail ---------- */
@@ -303,6 +434,7 @@ function openModal() {
   document.getElementById("modalTitle").textContent = "Add Subject";
   document.getElementById("subjectName").value = "";
   document.querySelectorAll(".checkbox-group input").forEach(cb => cb.checked = false);
+  document.getElementById("subjectTarget").value = DEFAULT_TARGET;
   document.getElementById("addBtn").innerText = "Add";
   resetDayStepperUI();
   validateForm();
@@ -323,6 +455,8 @@ function openEditModal(i) {
   });
   resetDayStepperUI();
 
+  document.getElementById("subjectTarget").value = sub.target || DEFAULT_TARGET;
+
   document.getElementById("addBtn").innerText = "Save";
   validateForm();
   document.getElementById("modal").classList.add("show");
@@ -341,7 +475,9 @@ function outsideClick(e) {
 function validateForm() {
   const name = document.getElementById("subjectName").value.trim();
   const checked = document.querySelectorAll(".checkbox-group input:checked");
-  document.getElementById("addBtn").disabled = !(name && checked.length > 0);
+  const target = parseInt(document.getElementById("subjectTarget").value, 10);
+  const targetValid = !isNaN(target) && target >= 50 && target <= 100;
+  document.getElementById("addBtn").disabled = !(name && checked.length > 0 && targetValid);
 }
 
 /* ---------- Add / Edit Subject ---------- */
@@ -352,15 +488,17 @@ function addSubject() {
     day: cb.value,
     sessions: modalDaySessions[cb.value] || 1
   }));
+  const target = parseInt(document.getElementById("subjectTarget").value, 10) || DEFAULT_TARGET;
 
   if (!name || days.length === 0) return;
 
   if (editIndex !== null) {
     subjects[editIndex].name = name;
     subjects[editIndex].days = days;
+    subjects[editIndex].target = target;
     showToast("Subject updated");
   } else {
-    subjects.push({ name: name, days: days, attendance: {} });
+    subjects.push({ name: name, days: days, target: target, attendance: {} });
     showToast("Subject added");
   }
 
@@ -382,11 +520,12 @@ function closeConfirm() {
 
 function confirmDelete() {
   if (deleteIndex !== null) {
+    pushUndoSnapshot();
     subjects.splice(deleteIndex, 1);
     save();
     closeConfirm();
     goToList();
-    showToast("Subject deleted");
+    showToast("Subject deleted", null, true);
     return;
   }
   closeConfirm();
@@ -407,6 +546,8 @@ function getSessionStatus(sub, dateStr, sessionIndex) {
 }
 
 function markSession(index, dateStr, sessionIndex, status) {
+  if (isHoliday(dateStr)) return; // off-days aren't markable
+
   const key = index + "-" + dateStr;
   activeDayKey = null;
 
@@ -436,9 +577,41 @@ function markSession(index, dateStr, sessionIndex, status) {
   }, 340);
 }
 
+/* ---------- Bulk action: mark every unmarked session scheduled today as Present ---------- */
+function markAllToday() {
+  if (isHoliday(todayString)) {
+    showToast("Today is marked as a break");
+    return;
+  }
+
+  const toMark = []; // { subjectIndex, sessionIndex }
+  subjects.forEach((sub, i) => {
+    const sessionsCount = sessionsForDay(sub, todayDayShort);
+    for (let s = 0; s < sessionsCount; s++) {
+      if (!getSessionStatus(sub, todayString, s)) toMark.push({ i, s });
+    }
+  });
+
+  if (toMark.length === 0) {
+    showToast("Nothing left to mark for today");
+    return;
+  }
+
+  pushUndoSnapshot();
+  toMark.forEach(({ i, s }) => {
+    if (!subjects[i].attendance[todayString]) subjects[i].attendance[todayString] = [];
+    subjects[i].attendance[todayString][s] = "present";
+  });
+  save();
+  playSound("present");
+  render();
+  showToast(toMark.length + " session" + (toMark.length === 1 ? "" : "s") + " marked present", null, true);
+}
+
 function stats(sub) {
   let present = 0, total = 0;
   for (let d in sub.attendance) {
+    if (isHoliday(d)) continue;
     sub.attendance[d].forEach(status => {
       if (!status || status === "cancelled") return;
       total++;
@@ -448,8 +621,9 @@ function stats(sub) {
   return { present, total };
 }
 
-function circularProgress(percent, size) {
+function circularProgress(percent, size, target) {
   size = size || 100;
+  target = target || DEFAULT_TARGET;
   const strokeWidth = size <= 70 ? 6 : 8;
   const radius = size / 2 - strokeWidth - 2;
   const circumference = 2 * Math.PI * radius;
@@ -457,9 +631,9 @@ function circularProgress(percent, size) {
   const c = size / 2;
 
   let colorClass = "ring-low";
-  if (percent >= 85) colorClass = "ring-high";
-  else if (percent >= 75) colorClass = "ring-target";
-  else if (percent >= 60) colorClass = "ring-mid";
+  if (percent >= target) colorClass = "ring-high";
+  else if (percent >= target - 10) colorClass = "ring-target";
+  else if (percent >= target - 25) colorClass = "ring-mid";
 
   const fontSize = Math.max(11, Math.round(size * 0.15));
 
@@ -497,18 +671,24 @@ function streakText(sub) {
 
 /* ---------- Safe Bunk / Needed-to-recover Math ---------- */
 function safeBunkChip(sub) {
+  const target = sub.target || DEFAULT_TARGET;
   const s = stats(sub);
   if (s.total === 0) return "<span class='neutral'>No Data</span>";
 
   const currentPercent = (s.present / s.total) * 100;
+  const t = target / 100;
 
-  if (currentPercent < TARGET) {
-    const needed = Math.max(1, Math.ceil(3 * s.total - 4 * s.present));
+  if (currentPercent < target) {
+    // Smallest x such that (present + x) / (total + x) >= t
+    // A tiny epsilon keeps floating-point rounding (e.g. 1 - 0.9 !== 0.1 exactly)
+    // from pushing an exact boundary value up by one.
+    const raw = (t * s.total - s.present) / (1 - t);
+    const needed = Math.max(1, Math.ceil(raw - 1e-9));
     return "<span class='danger'>Attend " + needed + " more in a row</span>";
   }
 
   let canSkip = 0;
-  while ((s.present / (s.total + canSkip)) * 100 >= TARGET) {
+  while ((s.present / (s.total + canSkip)) * 100 >= target - 1e-9) {
     canSkip++;
   }
   canSkip = canSkip - 1;
@@ -558,32 +738,42 @@ function calendarView(sub, index) {
     const sessionsCount = sessionsForDay(sub, dayShort);
     const isToday = (dateStr === todayString);
     const isActive = (activeDayKey === key);
+    const holidayHit = isHoliday(dateStr);
+    const gridColumn = dateObj.getDay(); // 0 = Sunday (leftmost column) ... 6 = Saturday (rightmost column)
 
     let classes = "day";
     if (isClass) classes += " has-class";
     if (isToday) classes += " today";
     if (isActive) classes += " active";
+    if (gridColumn === 0) classes += " col-edge-left";
+    if (gridColumn === 6) classes += " col-edge-right";
 
-    // Work out the aggregate look of the cell across all of that day's sessions
+    // Work out the aggregate look of the cell across all of that day's sessions.
+    // Semester-break days skip this entirely - they're never markable, and
+    // any older attendance data on a break date is excluded from stats too.
     let counts = { present: 0, absent: 0, cancelled: 0, marked: 0 };
-    for (let s = 0; s < sessionsCount; s++) {
-      const st = getSessionStatus(sub, dateStr, s);
-      if (st) {
-        counts.marked++;
-        counts[st] = (counts[st] || 0) + 1;
+    if (!holidayHit) {
+      for (let s = 0; s < sessionsCount; s++) {
+        const st = getSessionStatus(sub, dateStr, s);
+        if (st) {
+          counts.marked++;
+          counts[st] = (counts[st] || 0) + 1;
+        }
       }
-    }
-    if (counts.marked > 0) {
-      if (counts.present === sessionsCount) classes += " present";
-      else if (counts.absent === sessionsCount) classes += " absent";
-      else if (counts.cancelled === sessionsCount) classes += " cancelled";
-      else classes += " mixed";
+      if (counts.marked > 0) {
+        if (counts.present === sessionsCount) classes += " present";
+        else if (counts.absent === sessionsCount) classes += " absent";
+        else if (counts.cancelled === sessionsCount) classes += " cancelled";
+        else classes += " mixed";
+      }
+    } else {
+      classes += " holiday";
     }
 
     const animMatchesThisDay = pendingAnim && pendingAnim.key === key;
     if (animMatchesThisDay) classes += " anim-" + pendingAnim.status;
 
-    const clickAttr = isClass ? " onclick=\"toggleDayActions(" + index + ",'" + dateStr + "')\"" : "";
+    const clickAttr = (isClass && !holidayHit) ? " onclick=\"toggleDayActions(" + index + ",'" + dateStr + "')\"" : "";
 
     html += "<div class='" + classes + "' data-key='" + key + "'" + clickAttr + ">" + d;
 
@@ -591,11 +781,11 @@ function calendarView(sub, index) {
       html += "<svg class='check-draw' viewBox='0 0 24 24'><path d='M5 13l4 4 10-10'/></svg>";
     }
 
-    if (sessionsCount > 1 && counts.marked > 0 && counts.marked < sessionsCount) {
+    if (!holidayHit && sessionsCount > 1 && counts.marked > 0 && counts.marked < sessionsCount) {
       html += "<span class='day-fraction'>" + counts.marked + "/" + sessionsCount + "</span>";
     }
 
-    if (isClass) {
+    if (isClass && !holidayHit) {
       if (sessionsCount === 1) {
         html += "<div class='popover' onclick='event.stopPropagation()'>";
         html += "<button onclick=\"markSession(" + index + ",'" + dateStr + "',0,'present')\">P</button>";
@@ -652,16 +842,18 @@ function allSubjectsHtml() {
 
   let html = "";
   subjects.forEach(function (sub, i) {
+    const target = sub.target || DEFAULT_TARGET;
     const s = stats(sub);
     const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
 
     html +=
       "<div class='subject-row' onclick='openSubject(" + i + ")'>" +
-      "<div class='row-ring'>" + circularProgress(percent, 60) + "</div>" +
+      "<div class='row-ring'>" + circularProgress(percent, 60, target) + "</div>" +
       "<div class='row-info'>" +
       "<div class='row-title'>" + sub.name + "</div>" +
       "<div class='row-meta'>" +
       "<span class='row-streak'>" + streakText(sub) + "</span>" +
+      "<span class='row-target'>Target " + target + "%</span>" +
       "<span class='bunk-chip'>" + safeBunkChip(sub) + "</span>" +
       "</div>" +
       "</div>" +
@@ -672,6 +864,17 @@ function allSubjectsHtml() {
 }
 
 function todayViewHtml() {
+  if (isHoliday(todayString)) {
+    const label = holidayLabelFor(todayString);
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">\uD83C\uDF89</div>
+        <div class="empty-title">${label || "On a break"}</div>
+        <div class="empty-text">Today's marked as a semester break, so there's nothing to track.</div>
+      </div>
+    `;
+  }
+
   const todaysSubjects = [];
   subjects.forEach((sub, i) => {
     if (isClassDay(sub, todayDayShort)) todaysSubjects.push(i);
@@ -699,9 +902,14 @@ function todayViewHtml() {
 
   const allDone = markedUnits === totalUnits;
 
-  let html = "<div class='today-progress" + (allDone ? " done" : "") + "'>" +
+  let html = "<div class='today-progress-row'>";
+  html += "<div class='today-progress" + (allDone ? " done" : "") + "'>" +
     (allDone ? "\u2713 All done for today (" + totalUnits + "/" + totalUnits + ")" : markedUnits + " of " + totalUnits + " marked") +
     "</div>";
+  if (!allDone) {
+    html += "<button class='mark-all-btn' onclick='markAllToday()'>Mark All Present</button>";
+  }
+  html += "</div>";
 
   todaysSubjects.forEach(i => {
     const sub = subjects[i];
@@ -740,6 +948,7 @@ function renderDetailView() {
   if (!sub) { goToList(); return; }
 
   const i = activeSubjectIndex;
+  const target = sub.target || DEFAULT_TARGET;
   const s = stats(sub);
   const percent = s.total === 0 ? 0 : ((s.present / s.total) * 100).toFixed(1);
 
@@ -754,8 +963,8 @@ function renderDetailView() {
 
     "<div class='subject'>" +
     "<div class='subject-header'>" +
-    "<div class='subject-title'>" + sub.name + "</div>" +
-    circularProgress(percent, 100) +
+    "<div class='subject-title'>" + sub.name + "<div class='target-label'>Target " + target + "%</div></div>" +
+    circularProgress(percent, 100, target) +
     "</div>" +
 
     "<div class='header-divider'></div>" +
