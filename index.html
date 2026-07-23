@@ -33,6 +33,12 @@
 
 <div class="container" id="subjects"></div>
 
+<button class="fab fab-scan" id="fabScan" onclick="openScanModal()" aria-label="Scan timetable" title="Scan timetable">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+</button>
 <button class="fab" id="fab" onclick="openModal()">+</button>
 
 <div class="sheet-backdrop" id="sheetBackdrop" onclick="closeSettings()"></div>
@@ -59,6 +65,14 @@
       <span>Semester breaks</span>
     </div>
     <button class="sheet-link-btn" onclick="openHolidayModal()">Manage</button>
+  </div>
+  <div class="sheet-divider"></div>
+  <div class="sheet-row">
+    <div class="sheet-row-label">
+      <i class="sheet-icon">&#128248;</i>
+      <span>Gemini API key</span>
+    </div>
+    <button class="sheet-link-btn" onclick="openApiKeyModal()">Manage</button>
   </div>
   <div class="sheet-divider"></div>
   <div class="sheet-actions">
@@ -152,6 +166,51 @@
     </div>
     <div class="modal-actions">
       <button class="cancel-btn-modal" onclick="closeHolidayModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="scanModal" onclick="outsideClickScan(event)">
+  <div class="card" onclick="event.stopPropagation()">
+    <h3>Scan Timetable</h3>
+    <p class="scan-hint">Take or upload a photo of your timetable. Gemini reads it and lists the subjects it finds - nothing is added until you review and confirm.</p>
+
+    <input type="file" id="scanFileInput" accept="image/*" capture="environment" style="display:none" onchange="handleScanFileSelect(event)">
+    <div class="scan-drop" onclick="document.getElementById('scanFileInput').click()">
+      <img id="scanPreviewImg" class="scan-preview-img" style="display:none">
+      <div id="scanDropLabel">Tap to choose a photo</div>
+    </div>
+
+    <div id="scanStatus" class="scan-status"></div>
+
+    <div class="modal-actions">
+      <button class="cancel-btn-modal" onclick="closeScanModal()">Cancel</button>
+      <button id="scanRunBtn" onclick="runScan()" disabled>Scan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="reviewModal" onclick="outsideClickReview(event)">
+  <div class="card card-wide" onclick="event.stopPropagation()">
+    <h3>Review Parsed Subjects</h3>
+    <p class="scan-hint" id="reviewSummary"></p>
+    <div id="reviewList" class="review-list"></div>
+    <div class="modal-actions">
+      <button class="cancel-btn-modal" onclick="cancelScanReview()">Discard</button>
+      <button id="reviewCommitBtn" onclick="commitScanResults()">Add Subjects</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="apiKeyModal" onclick="outsideClickApiKey(event)">
+  <div class="card" onclick="event.stopPropagation()">
+    <h3>Gemini API Key</h3>
+    <p class="scan-hint">Used only for the timetable scan. Saved in this browser's local storage and sent straight from your device to Google - it never passes through anything Bunkr controls.</p>
+    <input id="apiKeyInput" type="password" placeholder="Paste your Gemini API key">
+    <p class="scan-hint"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free key at Google AI Studio &#8594;</a></p>
+    <div class="modal-actions">
+      <button class="cancel-btn-modal" onclick="closeApiKeyModal()">Cancel</button>
+      <button onclick="saveApiKey()">Save Key</button>
     </div>
   </div>
 </div>

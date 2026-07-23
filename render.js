@@ -22,6 +22,11 @@ import {
 } from './state.js';
 import { stats, circularProgress, streakText, safeBunkChip } from './stats.js';
 import { calendarView, changeMonth, toggleDayActions, markSession, markAllToday } from './calendar.js';
+import {
+  openApiKeyModal, closeApiKeyModal, outsideClickApiKey, saveApiKey,
+  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect, runScan,
+  toggleReviewItem, cancelScanReview, outsideClickReview, commitScanResults
+} from './scan.js';
 
 /* ---------- Dark Mode Persistence ---------- */
 if (localStorage.getItem("darkMode") === "true") {
@@ -625,11 +630,14 @@ function renderDetailView() {
 /* ---------- Render dispatcher ---------- */
 export function render() {
   const fab = document.getElementById("fab");
+  const fabScan = document.getElementById("fabScan");
   if (state.viewState === "detail") {
     if (fab) fab.style.display = "none";
+    if (fabScan) fabScan.style.display = "none";
     renderDetailView();
   } else {
     if (fab) fab.style.display = "";
+    if (fabScan) fabScan.style.display = "";
     renderListView();
   }
 }
@@ -649,7 +657,10 @@ Object.assign(window, {
   onDayToggle, stepDaySessions,
   deleteSubject, closeConfirm, confirmDelete,
   openSubject, backToList, setListTab,
-  changeMonth, toggleDayActions, markSession, markAllToday
+  changeMonth, toggleDayActions, markSession, markAllToday,
+  openApiKeyModal, closeApiKeyModal, outsideClickApiKey, saveApiKey,
+  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect, runScan,
+  toggleReviewItem, cancelScanReview, outsideClickReview, commitScanResults
 });
 
 /* ---------- App bootstrap ---------- */

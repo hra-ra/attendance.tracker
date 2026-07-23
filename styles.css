@@ -250,6 +250,17 @@ button:active { transform: scale(0.97); }
 
 .fab:hover { transform: scale(1.06); }
 
+.fab-scan {
+  bottom: 102px;
+  width: 50px;
+  height: 50px;
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ---------- Modal ---------- */
 .modal {
   position: fixed;
@@ -285,7 +296,8 @@ button:active { transform: scale(0.97); }
 
 input[type="text"],
 input[type="number"],
-input[type="date"] {
+input[type="date"],
+input[type="password"] {
   width: 100%;
   padding: 12px;
   border-radius: var(--radius-md);
@@ -989,6 +1001,82 @@ body.dark .popover button {
 .holiday-form button {
   margin: 0;
   width: 100%;
+}
+
+/* ---------- Timetable scan (Gemini) ---------- */
+.card-wide {
+  width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.scan-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: var(--space-3) 0;
+  line-height: 1.5;
+}
+
+.scan-hint a { color: var(--accent-strong); }
+
+.scan-drop {
+  margin-top: var(--space-3);
+  border: 1px dashed var(--text-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  transition: var(--transition-fast);
+}
+
+.scan-drop:hover { background: var(--calendar-bg); }
+
+.scan-preview-img {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: var(--radius-sm);
+  display: block;
+  margin: 0 auto var(--space-2);
+}
+
+.scan-status {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-3);
+  min-height: 1.2em;
+}
+
+.scan-status.error { color: var(--danger); }
+
+.review-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--calendar-bg);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.review-item input { margin-top: 3px; accent-color: var(--accent); }
+
+.review-item-text small { color: var(--text-secondary); }
+
+.review-item.removed {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 .sheet-action-btn {
