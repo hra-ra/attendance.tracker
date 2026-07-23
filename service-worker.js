@@ -1,9 +1,12 @@
-const CACHE_NAME = "bunkr-cache-v8";
+const CACHE_NAME = "bunkr-cache-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./script.js",
+  "./state.js",
+  "./stats.js",
+  "./calendar.js",
+  "./render.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
