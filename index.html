@@ -175,7 +175,7 @@
     <h3>Scan Timetable</h3>
     <p class="scan-hint">Take or upload a photo of your timetable. Gemini reads it and lists the subjects it finds - nothing is added until you review and confirm.</p>
 
-    <input type="file" id="scanFileInput" accept="image/*" capture="environment" style="display:none" onchange="handleScanFileSelect(event)">
+    <input type="file" id="scanFileInput" accept="image/*" style="display:none" onchange="handleScanFileSelect(event)">
     <div class="scan-drop" onclick="document.getElementById('scanFileInput').click()">
       <img id="scanPreviewImg" class="scan-preview-img" style="display:none">
       <div id="scanDropLabel">Tap to choose a photo</div>
