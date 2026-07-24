@@ -1033,6 +1033,53 @@ body.dark .popover button {
 
 .scan-drop:hover { background: var(--calendar-bg); }
 
+.scan-input-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: var(--space-3);
+  background: var(--calendar-bg);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+
+.scan-input-tab {
+  flex: 1;
+  margin: 0;
+  background: none;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+}
+
+.scan-input-tab.active {
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.scan-textarea {
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: 12px;
+  min-height: 110px;
+  resize: vertical;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--calendar-bg);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: var(--fs-base);
+  font-family: inherit;
+}
+
+.scan-calendar-btn {
+  width: 100%;
+  margin: var(--space-3) 0 0;
+  background: var(--calendar-bg);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+
 .scan-preview-img {
   max-width: 100%;
   max-height: 220px;
@@ -1062,6 +1109,7 @@ body.dark .popover button {
 .review-item {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 10px;
   background: var(--calendar-bg);
   padding: 10px 12px;
@@ -1072,7 +1120,31 @@ body.dark .popover button {
 
 .review-item input { margin-top: 3px; accent-color: var(--accent); }
 
+.review-item select {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: var(--fs-xs);
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+body.dark .review-item select { border: 1px solid rgba(255,255,255,0.15); }
+
 .review-item-text small { color: var(--text-secondary); }
+
+.review-match-badge {
+  font-size: var(--fs-xs);
+  color: var(--accent-strong);
+  font-weight: 400;
+}
+
+.review-note {
+  font-size: var(--fs-xs);
+  color: var(--warn);
+  margin-top: 4px;
+}
 
 .review-item.removed {
   opacity: 0.45;

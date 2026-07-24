@@ -131,5 +131,8 @@ export function isMuted() {
 
 /* ---------- Undo (generic, snapshot-based) ---------- */
 export function pushUndoSnapshot() {
-  state.undoSnapshot = JSON.parse(JSON.stringify(state.subjects));
+  state.undoSnapshot = {
+    subjects: JSON.parse(JSON.stringify(state.subjects)),
+    holidays: JSON.parse(JSON.stringify(state.holidays))
+  };
 }

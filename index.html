@@ -156,6 +156,7 @@
   <div class="card" onclick="event.stopPropagation()">
     <h3>Semester Breaks</h3>
     <div id="holidayList" class="holiday-list"></div>
+    <button class="scan-calendar-btn" onclick="openScanModal('breaks')">&#128248; Scan Academic Calendar</button>
     <div class="holiday-form">
       <input id="holidayLabel" type="text" placeholder="Label (e.g. Diwali Break)">
       <div class="holiday-dates">
@@ -172,20 +173,31 @@
 
 <div class="modal" id="scanModal" onclick="outsideClickScan(event)">
   <div class="card" onclick="event.stopPropagation()">
-    <h3>Scan Timetable</h3>
-    <p class="scan-hint">Take or upload a photo of your timetable. Gemini reads it and lists the subjects it finds - nothing is added until you review and confirm.</p>
+    <h3 id="scanModalTitle">Scan Timetable</h3>
+    <p class="scan-hint" id="scanModalHint">Take or upload a photo of your timetable, or describe it in words instead. Gemini reads it and lists the subjects it finds - nothing is added until you review.</p>
 
-    <input type="file" id="scanFileInput" accept="image/*" style="display:none" onchange="handleScanFileSelect(event)">
-    <div class="scan-drop" onclick="document.getElementById('scanFileInput').click()">
-      <img id="scanPreviewImg" class="scan-preview-img" style="display:none">
-      <div id="scanDropLabel">Tap to choose a photo</div>
+    <div class="scan-input-tabs">
+      <button type="button" class="scan-input-tab active" id="scanTabPhoto" onclick="setScanInputMode('photo')">Photo</button>
+      <button type="button" class="scan-input-tab" id="scanTabText" onclick="setScanInputMode('text')">Describe it</button>
+    </div>
+
+    <div id="scanPhotoSection">
+      <input type="file" id="scanFileInput" accept="image/*" style="display:none" onchange="handleScanFileSelect(event)">
+      <div class="scan-drop" onclick="document.getElementById('scanFileInput').click()">
+        <img id="scanPreviewImg" class="scan-preview-img" style="display:none">
+        <div id="scanDropLabel">Tap to choose a photo</div>
+      </div>
+    </div>
+
+    <div id="scanTextSection" style="display:none">
+      <textarea id="scanTextInput" class="scan-textarea" placeholder="e.g. Physics lecture Mon and Wed, Physics Lab Thu with 2 sessions, Data Structures every weekday..." oninput="validateScanTextInput()"></textarea>
     </div>
 
     <div id="scanStatus" class="scan-status"></div>
 
     <div class="modal-actions">
       <button class="cancel-btn-modal" onclick="closeScanModal()">Cancel</button>
-      <button id="scanRunBtn" onclick="runScan()" disabled>Scan</button>
+      <button id="scanRunBtn" onclick="runScanAction()" disabled>Scan</button>
     </div>
   </div>
 </div>

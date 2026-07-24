@@ -24,8 +24,9 @@ import { stats, circularProgress, streakText, safeBunkChip } from './stats.js';
 import { calendarView, changeMonth, toggleDayActions, markSession, markAllToday } from './calendar.js';
 import {
   openApiKeyModal, closeApiKeyModal, outsideClickApiKey, saveApiKey,
-  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect, runScan,
-  toggleReviewItem, cancelScanReview, outsideClickReview, commitScanResults
+  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect,
+  setScanInputMode, validateScanTextInput, runScanAction,
+  setReviewAction, cancelScanReview, outsideClickReview, commitScanResults
 } from './scan.js';
 
 /* ---------- Dark Mode Persistence ---------- */
@@ -144,9 +145,11 @@ export function showToast(message, type, withUndo) {
 /* ---------- Undo (generic, snapshot-based) ---------- */
 function performUndo() {
   if (!state.undoSnapshot) return;
-  state.subjects = state.undoSnapshot;
+  state.subjects = state.undoSnapshot.subjects;
+  state.holidays = state.undoSnapshot.holidays;
   state.undoSnapshot = null;
   save();
+  saveHolidays();
   document.getElementById("toast").className = "toast";
   render();
   showToast("Undone");
@@ -659,8 +662,9 @@ Object.assign(window, {
   openSubject, backToList, setListTab,
   changeMonth, toggleDayActions, markSession, markAllToday,
   openApiKeyModal, closeApiKeyModal, outsideClickApiKey, saveApiKey,
-  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect, runScan,
-  toggleReviewItem, cancelScanReview, outsideClickReview, commitScanResults
+  openScanModal, closeScanModal, outsideClickScan, handleScanFileSelect,
+  setScanInputMode, validateScanTextInput, runScanAction,
+  setReviewAction, cancelScanReview, outsideClickReview, commitScanResults
 });
 
 /* ---------- App bootstrap ---------- */
@@ -668,3 +672,8 @@ Object.assign(window, {
 history.replaceState({ view: "list" }, "", "#");
 updateSwitches();
 render();
+const launchParams = new URLSearchParams(location.search);
+if (launchParams.get("action") === "mark-today") {
+  setListTab("today");
+  markAllToday();
+}
