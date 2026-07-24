@@ -16,7 +16,7 @@
 import { state, DEFAULT_TARGET, WEEKDAYS, save, pushUndoSnapshot, normalizeSubjects } from './state.js';
 import { showToast, openSettings, closeSettings, setListTab } from './render.js';
 
-const GEMINI_MODEL = "gemini-2.5-flash"; // change here if Google renames/retires this model
+const GEMINI_MODEL = "gemini-3.6-flash"; // change here if Google renames/retires this model again
 const MAX_IMAGE_DIMENSION = 1600;        // downscale large camera photos before upload, for speed + payload size
 
 let selectedImageBase64 = null;
